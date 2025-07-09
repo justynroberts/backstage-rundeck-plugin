@@ -12,14 +12,14 @@ A Backstage scaffolder backend module that provides actions for executing Rundec
 ## Installation
 
 ```bash
-yarn add git+https://github.com/jroberts/rundeck-backstage.git
+yarn add git+https://github.com/justynroberts/backstage-rundeck-plugin.git
 ```
 
 ## Quick Start
 
 1. **Install the plugin**:
    ```bash
-   yarn add git+https://github.com/jroberts/rundeck-backstage.git
+   yarn add git+https://github.com/justynroberts/backstage-rundeck-plugin.git
    ```
 
 2. **Add to your backend** (`packages/backend/src/index.ts`):

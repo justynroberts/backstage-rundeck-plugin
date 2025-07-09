@@ -5,7 +5,7 @@
   "description": "Backstage Rundeck Plugin - A scaffolder backend module for executing Rundeck jobs",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/jroberts/rundeck-backstage.git"
+    "url": "git+https://github.com/justynroberts/backstage-rundeck-plugin.git"
   },
   "keywords": [
     "backstage",
