@@ -26,12 +26,12 @@ yarn add @internal/plugin-scaffolder-backend-module-rundeck@git+https://github.c
 
 2. **Add to your backend** (`packages/backend/src/index.ts`):
    ```typescript
-   import { createBackend } from '@backstage/backend-defaults';
+##top
    import scaffolderModuleRundeck from '@internal/plugin-scaffolder-backend-module-rundeck';
 
-   const backend = createBackend();
+##bottom 
    backend.add(scaffolderModuleRundeck);
-   backend.start();
+
    ```
 
 3. **Configure Rundeck** (`app-config.yaml`):
