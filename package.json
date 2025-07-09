@@ -1,0 +1,32 @@
+{
+  "name": "rundeck-backstage",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Backstage Rundeck Plugin - A scaffolder backend module for executing Rundeck jobs",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jroberts/rundeck-backstage.git"
+  },
+  "keywords": [
+    "backstage",
+    "plugin",
+    "rundeck",
+    "scaffolder",
+    "automation"
+  ],
+  "author": "jroberts",
+  "license": "Apache-2.0",
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "yarn workspaces foreach run build",
+    "lint": "yarn workspaces foreach run lint",
+    "test": "yarn workspaces foreach run test",
+    "clean": "yarn workspaces foreach run clean"
+  },
+  "devDependencies": {
+    "@backstage/cli": "^0.30.0",
+    "typescript": "~5.4.0"
+  }
+}
