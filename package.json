@@ -31,23 +31,23 @@
     "test": "backstage-cli package test",
     "clean": "backstage-cli package clean",
     "prepack": "backstage-cli package prepack",
-    "postpack": "backstage-cli package postpack"
+    "postpack": "backstage-cli package postpack",
+    "prepare": "backstage-cli package build"
   },
   "dependencies": {
-    "@backstage/backend-common": "^0.19.0",
     "@backstage/backend-plugin-api": "^0.6.0",
     "@backstage/config": "^1.0.0",
     "@backstage/plugin-scaffolder-node": "^0.2.0",
-    "@backstage/types": "^1.0.0",
     "node-fetch": "^2.6.7",
-    "winston": "^3.2.1",
     "zod": "^3.21.4"
   },
   "devDependencies": {
-    "@backstage/cli": "^0.22.8",
-    "@types/node-fetch": "^2.6.3"
+    "@backstage/cli": "^0.24.0",
+    "@types/node-fetch": "^2.6.3",
+    "typescript": "^5.0.0"
   },
   "files": [
-    "dist"
+    "dist",
+    "src"
   ]
 }

@@ -1,147 +1,134 @@
 import { createTemplateAction } from '@backstage/plugin-scaffolder-node';
 import { Config } from '@backstage/config';
-import { z } from 'zod';
+import { LoggerService } from '@backstage/backend-plugin-api';
 import fetch from 'node-fetch';
+import { z } from 'zod';
 
-interface RundeckExecutionState {
-  completed: boolean;
-  executionState: string;
+interface ActionOptions {
+  config: Config;
+  logger: LoggerService;
 }
 
-interface RundeckExecutionResponse {
-  id: string;
-}
+export function createRundeckExecuteAction(options: ActionOptions) {
+  const { config, logger } = options;
 
-export const createRundeckExecuteAction = (config: Config) => {
-  return createTemplateAction({
+  return createTemplateAction<{
+    jobId: string;
+    projectName: string;
+    parameters?: Record<string, string>;
+    waitForJob?: boolean;
+    timeout?: number;
+  }>({
     id: 'rundeck:job:execute',
-    description: 'Executes a Rundeck job with parameters',
+    description: 'Executes a Rundeck job with optional parameters and wait for completion',
     schema: {
       input: z.object({
-        jobId: z.string().describe('The Rundeck job ID to execute'),
+        jobId: z.string().describe('The Rundeck job ID or UUID'),
         projectName: z.string().describe('The Rundeck project name'),
         parameters: z.record(z.string()).optional().describe('Job parameters as key-value pairs'),
-        waitForJob: z.boolean().default(true).describe('Whether to wait for job completion'),
+        waitForJob: z.boolean().optional().default(false).describe('Wait for job completion before continuing'),
+        timeout: z.number().optional().default(300).describe('Timeout in seconds when waiting for job completion'),
       }),
     },
-
     async handler(ctx) {
-      const { jobId, parameters, waitForJob } = ctx.input;
-      const { logger } = ctx;
-
+      const { jobId, projectName, parameters = {}, waitForJob = false, timeout = 300 } = ctx.input;
+      
       try {
+        // Get Rundeck configuration from app-config.yaml
         const rundeckUrl = config.getString('rundeck.url');
-        const rundeckToken = config.getString('rundeck.apiToken');
-
-        // Debug: Verify config values are present
-        logger.debug(`Using Rundeck URL: ${rundeckUrl}`);
-        logger.debug('Rundeck token configured: ' + (rundeckToken ? 'Yes' : 'No'));
-
-        if (!rundeckUrl || !rundeckToken) {
-          throw new Error('Rundeck URL and API token must be configured');
+        const apiToken = config.getString('rundeck.apiToken');
+        
+        if (!rundeckUrl || !apiToken) {
+          throw new Error('Rundeck URL and API token must be configured in app-config.yaml');
         }
 
-        const executionId = await executeRundeckJob(rundeckUrl, rundeckToken, jobId, parameters, logger);
+        logger.info(`Executing Rundeck job ${jobId} in project ${projectName}`);
+        
+        // Build the execution request
+        const executionData: any = {
+          project: projectName,
+        };
+
+        // Add options if parameters are provided
+        if (Object.keys(parameters).length > 0) {
+          executionData.options = parameters;
+        }
+
+        // Execute the job
+        const response = await fetch(
+          `${rundeckUrl}/api/18/job/${jobId}/executions`,
+          {
+            method: 'POST',
+            headers: {
+              'X-Rundeck-Auth-Token': apiToken,
+              'Content-Type': 'application/json',
+              'Accept': 'application/json',
+            },
+            body: JSON.stringify(executionData),
+          }
+        );
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(`Failed to execute Rundeck job: ${response.status} ${response.statusText} - ${errorText}`);
+        }
+
+        const result = await response.json() as any;
+        const executionId = result.id;
+        
+        logger.info(`Rundeck job execution started with ID: ${executionId}`);
+        
         ctx.output('executionId', executionId);
+        ctx.output('rundeckUrl', `${rundeckUrl}/project/${projectName}/execution/show/${executionId}`);
 
         if (waitForJob) {
-          await pollJobStatus(rundeckUrl, rundeckToken, executionId, logger);
+          logger.info(`Waiting for job execution ${executionId} to complete (timeout: ${timeout}s)`);
+          
+          const startTime = Date.now();
+          let status = 'running';
+          
+          while (status === 'running' && (Date.now() - startTime) < timeout * 1000) {
+            // Wait 5 seconds before checking status
+            await new Promise(resolve => setTimeout(resolve, 5000));
+            
+            const statusResponse = await fetch(
+              `${rundeckUrl}/api/18/execution/${executionId}`,
+              {
+                headers: {
+                  'X-Rundeck-Auth-Token': apiToken,
+                  'Accept': 'application/json',
+                },
+              }
+            );
+
+            if (statusResponse.ok) {
+              const statusData = await statusResponse.json() as any;
+              status = statusData.status;
+              logger.info(`Job execution ${executionId} status: ${status}`);
+            } else {
+              logger.warn(`Failed to check job status: ${statusResponse.status}`);
+            }
+          }
+          
+          if (status === 'running') {
+            logger.warn(`Job execution ${executionId} timed out after ${timeout} seconds`);
+            ctx.output('status', 'timeout');
+          } else {
+            logger.info(`Job execution ${executionId} completed with status: ${status}`);
+            ctx.output('status', status);
+            
+            if (status === 'failed') {
+              throw new Error(`Rundeck job execution failed with status: ${status}`);
+            }
+          }
+        } else {
+          ctx.output('status', 'started');
         }
-      } catch (err) {
-        const errorMessage = err instanceof Error ? err.message : String(err);
-        logger.error(`Rundeck job execution failed: ${errorMessage}`);
-        throw new Error(`Failed to execute Rundeck job: ${errorMessage}`);
+
+      } catch (error) {
+        logger.error(`Error executing Rundeck job: ${error}`);
+        throw error;
       }
     },
   });
-};
-
-async function executeRundeckJob(
-  rundeckUrl: string,
-  token: string,
-  jobId: string,
-  parameters?: Record<string, string>,
-  logger?: any,
-): Promise<string> {
-  const url = `${rundeckUrl}/api/40/job/${jobId}/executions`;
-  const headers = {
-    'X-Rundeck-Auth-Token': token,
-    'Content-Type': 'application/json',
-  };
-
-  const body = parameters ? { argString: formatParameters(parameters) } : {};
-
-  try {
-    logger?.info(`Executing Rundeck job ${jobId}`);
-    logger?.debug(`Request URL: ${url}`);
-    logger?.debug(`Request headers: ${JSON.stringify(headers)}`);
-    logger?.debug(`Request body: ${JSON.stringify(body)}`);
-
-    const response = await fetch(url, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(body),
-    });
-
-    const responseText = await response.text();
-    logger?.debug(`Response status: ${response.status}`);
-    logger?.debug(`Response body: ${responseText}`);
-
-    if (!response.ok) {
-      throw new Error(`Failed to execute job: ${response.statusText}`);
-    }
-
-    const result = JSON.parse(responseText) as RundeckExecutionResponse;
-    return result.id;
-  } catch (err) {
-    const errorMessage = err instanceof Error ? err.message : String(err);
-    logger?.error(`Rundeck API request failed: ${errorMessage}`);
-    throw new Error(`Rundeck API request failed: ${errorMessage}`);
-  }
-}
-
-async function pollJobStatus(
-  rundeckUrl: string,
-  token: string,
-  executionId: string,
-  logger?: any,
-): Promise<void> {
-  const url = `${rundeckUrl}/api/40/execution/${executionId}/state`;
-  const headers = {
-    'X-Rundeck-Auth-Token': token,
-  };
-
-  while (true) {
-    try {
-      logger?.info(`Checking status for execution ${executionId}`);
-      logger?.debug(`Polling URL: ${url}`);
-      logger?.debug(`Request headers: ${JSON.stringify(headers)}`);
-
-      const response = await fetch(url, { headers });
-      const responseText = await response.text();
-      logger?.debug(`Poll response status: ${response.status}`);
-      logger?.debug(`Poll response body: ${responseText}`);
-
-      if (!response.ok) {
-        throw new Error(`Failed to get execution status: ${response.statusText}`);
-      }
-
-      const status = JSON.parse(responseText) as RundeckExecutionState;
-      if (status.completed) {
-        break;
-      }
-
-      await new Promise(resolve => setTimeout(resolve, 5000));
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : String(err);
-      logger?.error(`Failed to poll job status: ${errorMessage}`);
-      throw new Error(`Failed to poll job status: ${errorMessage}`);
-    }
-  }
-}
-
-function formatParameters(params: Record<string, string>): string {
-  return Object.entries(params)
-    .map(([key, value]) => `-${key} ${value}`)
-    .join(' ');
 }

@@ -3,18 +3,19 @@ import { scaffolderActionsExtensionPoint } from '@backstage/plugin-scaffolder-no
 import { createRundeckExecuteAction } from './actions/rundeck/rundeck';
 import { coreServices } from '@backstage/backend-plugin-api';
 
-export const scaffolderModule = createBackendModule({
-  moduleId: 'rundeck-action',
+export default createBackendModule({
+  moduleId: 'rundeck',
   pluginId: 'scaffolder',
   register({ registerInit }) {
     registerInit({
       deps: {
-        scaffolderActions: scaffolderActionsExtensionPoint,
+        scaffolder: scaffolderActionsExtensionPoint,
         config: coreServices.rootConfig,
+        logger: coreServices.logger,
       },
-      async init({ scaffolderActions, config }) {
-        scaffolderActions.addActions(createRundeckExecuteAction(config));
-      }
+      async init({ scaffolder, config, logger }) {
+        scaffolder.addActions(createRundeckExecuteAction({ config, logger }));
+      },
     });
   },
 });

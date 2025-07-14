@@ -1,140 +1,101 @@
 # Installation Guide
 
-## Method 1: Install from Git Repository (Recommended)
+This guide provides step-by-step instructions for installing and configuring the Rundeck Backstage Plugin.
 
-```bash
-yarn add @internal/plugin-scaffolder-backend-module-rundeck@git+https://github.com/justynroberts/backstage-rundeck-plugin.git
+## Prerequisites
+
+- Backstage instance (version 1.19+)
+- Access to a Rundeck instance with API enabled
+- Rundeck API token with appropriate permissions
+- Node.js 18+ and Yarn
+
+## Step-by-Step Installation
+
+### 1. Add the Plugin Dependency
+
+Add the plugin to your backend package dependencies by editing `packages/backend/package.json`:
+
+```json
+{
+  "dependencies": {
+    "@internal/plugin-scaffolder-backend-module-rundeck": "git+https://github.com/justynroberts/backstage-rundeck-plugin.git"
+  }
+}
 ```
 
-## Method 2: Install Specific Version/Branch
+### 2. Register the Plugin Module
 
-```bash
-# Install specific version
-yarn add @internal/plugin-scaffolder-backend-module-rundeck@git+https://github.com/justynroberts/backstage-rundeck-plugin.git#v1.0.0
-
-# Install from specific branch
-yarn add @internal/plugin-scaffolder-backend-module-rundeck@git+https://github.com/justynroberts/backstage-rundeck-plugin.git#main
-```
-
-## Method 3: Install from Tarball
-
-If you have the distribution tarball:
-
-```bash
-yarn add @internal/plugin-scaffolder-backend-module-rundeck@file:./path/to/package.tgz
-```
-
-## Backend Configuration
-
-Add the plugin to your Backstage backend in `packages/backend/src/index.ts`:
+Import and register the module in your backend by editing `packages/backend/src/index.ts`:
 
 ```typescript
 import { createBackend } from '@backstage/backend-defaults';
-import scaffolderModuleRundeck from '@internal/plugin-scaffolder-backend-module-rundeck';
 
 const backend = createBackend();
 
-// Add your existing plugins
-backend.add(import('@backstage/plugin-app-backend/alpha'));
-backend.add(import('@backstage/plugin-scaffolder-backend/alpha'));
-backend.add(import('@backstage/plugin-techdocs-backend/alpha'));
+// ... other backend.add() statements
 
-// Add the Rundeck plugin
-backend.add(scaffolderModuleRundeck);
+// Add Rundeck scaffolder actions
+backend.add(import('@internal/plugin-scaffolder-backend-module-rundeck'));
 
 backend.start();
 ```
 
-## App Configuration
+### 3. Configure Rundeck Connection
 
 Add Rundeck configuration to your `app-config.yaml`:
 
 ```yaml
 rundeck:
-  url: https://your-rundeck-instance.com
+  url: ${RUNDECK_API_URL}
   apiToken: ${RUNDECK_API_TOKEN}
 ```
 
-Set the environment variable:
+### 4. Set Environment Variables
+
+Create a `.env` file in your Backstage root directory:
 
 ```bash
-export RUNDECK_API_TOKEN=your-actual-api-token
+# Rundeck Configuration
+RUNDECK_API_URL=https://your-rundeck-instance.com
+RUNDECK_API_TOKEN=your-rundeck-api-token
 ```
 
-## Usage in Templates
+### 5. Install Dependencies
 
-Create scaffolder templates that use the Rundeck action:
-
-```yaml
-apiVersion: scaffolder.backstage.io/v1beta3
-kind: Template
-metadata:
-  name: deploy-with-rundeck
-  title: Deploy Application with Rundeck
-  description: Deploy your application using Rundeck
-spec:
-  owner: platform-team
-  type: deployment
-  parameters:
-    - title: Deployment Details
-      required:
-        - jobId
-        - environment
-      properties:
-        jobId:
-          title: Rundeck Job ID
-          type: string
-          description: The ID of the Rundeck job to execute
-        environment:
-          title: Environment
-          type: string
-          enum: ['dev', 'staging', 'production']
-          description: Target environment
-        version:
-          title: Version
-          type: string
-          description: Application version to deploy
-          default: 'latest'
-  steps:
-    - id: rundeck-deploy
-      name: Deploy via Rundeck
-      action: rundeck:job:execute
-      input:
-        jobId: ${{ parameters.jobId }}
-        projectName: deployment-project
-        parameters:
-          environment: ${{ parameters.environment }}
-          version: ${{ parameters.version }}
-          component: ${{ parameters.name }}
-        waitForJob: true
+```bash
+yarn install
 ```
 
-## Verification
+### 6. Build and Start
 
-1. Restart your Backstage backend
-2. Check backend logs for successful plugin loading
-3. Navigate to `/create` in your Backstage UI
-4. Look for templates using the `rundeck:job:execute` action
-5. Test template execution
+```bash
+yarn start
+```
+
+### 7. Verify Installation
+
+Check the backend logs for:
+
+```
+[scaffolder] Starting scaffolder with the following actions enabled rundeck:job:execute, ...
+```
 
 ## Troubleshooting
 
-### Plugin not found
-- Verify the package was installed correctly: `yarn list @internal/plugin-scaffolder-backend-module-rundeck`
-- Check import statement matches the exact package name
-- Ensure you've restarted the backend after adding the plugin
+### Plugin Not Loading
 
-### Rundeck connection issues
-- Verify Rundeck URL is accessible from your Backstage backend
-- Check API token has proper permissions
-- Test token with curl: `curl -H "X-Rundeck-Auth-Token: YOUR_TOKEN" https://your-rundeck.com/api/40/system/info`
+1. Check backend logs for import errors
+2. Verify the import statement in backend index.ts
+3. Run `yarn install` to ensure plugin is downloaded
 
-### Action not available
-- Verify the plugin is properly registered in your backend
-- Check backend logs for any plugin loading errors
-- Ensure your templates reference the correct action ID: `rundeck:job:execute`
+### Configuration Issues
 
-### Update the plugin
-```bash
-yarn upgrade @internal/plugin-scaffolder-backend-module-rundeck
-```
+1. Verify environment variables are set
+2. Check app-config.yaml syntax
+3. Test Rundeck connectivity manually
+
+## Security
+
+- Never commit API tokens to version control
+- Use environment variables for sensitive configuration
+- Use minimum required permissions for API tokens

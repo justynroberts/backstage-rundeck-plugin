@@ -1,15 +1,15 @@
-# Rundeck Backstage Plugin
+# Backstage Rundeck Plugin
 
-A Backstage scaffolder backend module that provides actions for executing Rundeck jobs.
+A Backstage scaffolder backend module that provides actions for executing Rundeck jobs as part of your software templates.
 
 ## Features
 
 - ✅ Execute Rundeck jobs with parameters
-- ✅ Wait for job completion with status polling
-- ✅ Full integration with Backstage scaffolder templates
-- ✅ Configurable via Backstage app-config.yaml
-- ✅ TypeScript support
-- ✅ Comprehensive error handling
+- ✅ Optional job completion waiting with timeout
+- ✅ Secure configuration through app-config.yaml
+- ✅ Full TypeScript support
+- ✅ Comprehensive logging
+- ✅ Error handling and status reporting
 
 ## Installation
 
