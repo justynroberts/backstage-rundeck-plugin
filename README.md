@@ -20,15 +20,16 @@ yarn add @internal/plugin-scaffolder-backend-module-rundeck@git+https://github.c
 ## Quick Start
 
 1. **Install the plugin**:
+2. 
    ```bash
    yarn add @internal/plugin-scaffolder-backend-module-rundeck@git+https://github.com/justynroberts/backstage-rundeck-plugin.git
    ```
 
-2. **Add to your backend** (`packages/backend/src/index.ts`):
+3. **Add to your backend** (`packages/backend/src/index.ts`):
    ```typescript
-##top
+
    import scaffolderModuleRundeck from '@internal/plugin-scaffolder-backend-module-rundeck';
-##bottom 
+
    backend.add(scaffolderModuleRundeck);
 
    ```
