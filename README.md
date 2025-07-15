@@ -6,6 +6,7 @@ A Backstage scaffolder backend module that provides actions for executing Rundec
 
 - ✅ Execute Rundeck jobs with parameters
 - ✅ Optional job completion waiting with timeout
+- ✅ **Execution log retrieval** - Get complete job logs when waiting for completion
 - ✅ Secure configuration through app-config.yaml
 - ✅ Full TypeScript support
 - ✅ Comprehensive logging
@@ -68,13 +69,17 @@ Executes a Rundeck job with optional parameters.
 | `jobId` | string | ✅ | The Rundeck job ID to execute |
 | `projectName` | string | ✅ | The Rundeck project name |
 | `parameters` | object | ❌ | Job parameters as key-value pairs |
-| `waitForJob` | boolean | ❌ | Whether to wait for job completion (default: true) |
+| `waitForJob` | boolean | ❌ | Whether to wait for job completion (default: false) |
+| `timeout` | number | ❌ | Timeout in seconds when waiting for job completion (default: 300) |
 
 #### Outputs
 
 | Parameter | Type | Description |
 |-----------|------|-------------|
 | `executionId` | string | The ID of the executed job |
+| `rundeckUrl` | string | Direct link to the job execution in Rundeck |
+| `status` | string | Job completion status (when waitForJob: true) |
+| `logs` | string | Complete execution logs (when waitForJob: true) |
 
 #### Example
 
@@ -92,6 +97,20 @@ steps:
         component: ${{ parameters.name }}
         region: "us-east-1"
       waitForJob: true
+      timeout: 600
+
+  - id: show-logs
+    name: Show Execution Logs
+    action: debug:log
+    input:
+      message: |
+        Rundeck Job Execution Complete!
+        Status: ${{ steps['deploy-app'].output.status }}
+        
+        View in Rundeck: ${{ steps['deploy-app'].output.rundeckUrl }}
+        
+        Execution Logs:
+        ${{ steps['deploy-app'].output.logs }}
 ```
 
 ## Documentation
@@ -190,6 +209,15 @@ Apache-2.0
 - 💬 [Backstage Discord](https://discord.gg/backstage-687207715902193673)
 
 ## Changelog
+
+### v1.1.0
+- **NEW**: Execution log retrieval when `waitForJob: true`
+- **NEW**: `logs` output containing complete job execution logs
+- **NEW**: `rundeckUrl` output with direct link to execution
+- **NEW**: `status` output showing job completion status
+- **NEW**: `timeout` parameter for configurable wait timeouts
+- Enhanced error handling for log retrieval
+- Improved JSON and text format log parsing
 
 ### v1.0.0
 - Initial release

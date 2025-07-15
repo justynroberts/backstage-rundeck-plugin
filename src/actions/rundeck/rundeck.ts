@@ -42,7 +42,6 @@ export function createRundeckExecuteAction(options: ActionOptions) {
           throw new Error('Rundeck URL and API token must be configured in app-config.yaml');
         }
 
-        logger.info(`Executing Rundeck job ${jobId} in project ${projectName}`);
         
         // Build the execution request
         const executionData: any = {
@@ -76,18 +75,16 @@ export function createRundeckExecuteAction(options: ActionOptions) {
         const result = await response.json() as any;
         const executionId = result.id;
         
-        logger.info(`Rundeck job execution started with ID: ${executionId}`);
         
         ctx.output('executionId', executionId);
         ctx.output('rundeckUrl', `${rundeckUrl}/project/${projectName}/execution/show/${executionId}`);
 
         if (waitForJob) {
-          logger.info(`Waiting for job execution ${executionId} to complete (timeout: ${timeout}s)`);
           
           const startTime = Date.now();
           let status = 'running';
           
-          while (status === 'running' && (Date.now() - startTime) < timeout * 1000) {
+          while ((status === 'running' || status === 'scheduled' || status === 'queued') && (Date.now() - startTime) < timeout * 1000) {
             // Wait 5 seconds before checking status
             await new Promise(resolve => setTimeout(resolve, 5000));
             
@@ -104,18 +101,67 @@ export function createRundeckExecuteAction(options: ActionOptions) {
             if (statusResponse.ok) {
               const statusData = await statusResponse.json() as any;
               status = statusData.status;
-              logger.info(`Job execution ${executionId} status: ${status}`);
             } else {
-              logger.warn(`Failed to check job status: ${statusResponse.status}`);
+              ctx.logger?.warn(`Failed to check job status: ${statusResponse.status}`);
             }
           }
           
-          if (status === 'running') {
-            logger.warn(`Job execution ${executionId} timed out after ${timeout} seconds`);
+          if (status === 'running' || status === 'scheduled' || status === 'queued') {
             ctx.output('status', 'timeout');
           } else {
-            logger.info(`Job execution ${executionId} completed with status: ${status}`);
             ctx.output('status', status);
+            
+            // Fetch execution logs
+            try {
+              let logResponse = await fetch(
+                `${rundeckUrl}/api/18/execution/${executionId}/output?format=json`,
+                {
+                  headers: {
+                    'X-Rundeck-Auth-Token': apiToken,
+                    'Accept': 'application/json',
+                  },
+                }
+              );
+              
+              let logs = '';
+              
+              if (logResponse.ok) {
+                const logData = await logResponse.json() as any;
+                
+                // Try multiple possible response formats
+                if (logData.entries && Array.isArray(logData.entries)) {
+                  logs = logData.entries.map((entry: any) => entry.log || entry.message || entry.content || entry.text).join('\n');
+                } else if (logData.output) {
+                  logs = logData.output;
+                } else if (logData.log) {
+                  logs = logData.log;
+                } else if (typeof logData === 'string') {
+                  logs = logData;
+                } else {
+                  logs = JSON.stringify(logData, null, 2);
+                }
+              } else {
+                // Fallback to text format
+                logResponse = await fetch(
+                  `${rundeckUrl}/api/18/execution/${executionId}/output`,
+                  {
+                    headers: {
+                      'X-Rundeck-Auth-Token': apiToken,
+                      'Accept': 'text/plain',
+                    },
+                  }
+                );
+                
+                if (logResponse.ok) {
+                  logs = await logResponse.text();
+                }
+              }
+              
+              ctx.output('logs', logs);
+              
+            } catch (logError) {
+              ctx.output('logs', '');
+            }
             
             if (status === 'failed') {
               throw new Error(`Rundeck job execution failed with status: ${status}`);
@@ -126,7 +172,7 @@ export function createRundeckExecuteAction(options: ActionOptions) {
         }
 
       } catch (error) {
-        logger.error(`Error executing Rundeck job: ${error}`);
+        ctx.logger?.error(`Error executing Rundeck job: ${error}`);
         throw error;
       }
     },
