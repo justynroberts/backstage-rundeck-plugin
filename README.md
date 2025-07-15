@@ -27,9 +27,9 @@ yarn add @internal/plugin-scaffolder-backend-module-rundeck@git+https://github.c
 
 3. **Add to your backend** (`packages/backend/src/index.ts`):
    ```typescript
-
+    (At Top)
    import scaffolderModuleRundeck from '@internal/plugin-scaffolder-backend-module-rundeck';
-
+   (At Bottom)
    backend.add(scaffolderModuleRundeck);
 
    ```
