@@ -2,7 +2,7 @@
 node_modules/
 
 # Build output
-dist/
+# dist/  # We need dist for distribution
 dist-types/
 
 # Logs

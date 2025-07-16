@@ -1,40 +1,33 @@
-import { createTemplateAction } from '@backstage/plugin-scaffolder-node';
-import { Config } from '@backstage/config';
-import { LoggerService } from '@backstage/backend-plugin-api';
-import fetch from 'node-fetch';
-import { z } from 'zod';
+'use strict';
 
-interface ActionOptions {
-  config: Config;
-  logger: LoggerService;
-}
+Object.defineProperty(exports, '__esModule', { value: true });
 
-export function createRundeckExecuteAction(options: ActionOptions) {
+var pluginScaffolderNode = require('@backstage/plugin-scaffolder-node');
+var fetch = require('node-fetch');
+var z = require('zod');
+
+function _interopDefaultLegacy (e) { return e && typeof e === 'object' && 'default' in e ? e : { 'default': e }; }
+
+var fetch__default = /*#__PURE__*/_interopDefaultLegacy(fetch);
+
+function createRundeckExecuteAction(options) {
   const { config } = options;
-
-  return createTemplateAction<{
-    jobId: string;
-    projectName: string;
-    parameters?: Record<string, string>;
-    waitForJob?: boolean;
-    timeout?: number;
-  }>({
+  return pluginScaffolderNode.createTemplateAction({
     id: 'rundeck:job:execute',
     description: 'Executes a Rundeck job with optional parameters and wait for completion',
     schema: {
-      input: z.object({
-        jobId: z.string().describe('The Rundeck job ID or UUID'),
-        projectName: z.string().describe('The Rundeck project name'),
-        parameters: z.record(z.string()).optional().describe('Job parameters as key-value pairs'),
-        waitForJob: z.boolean().optional().default(false).describe('Wait for job completion before continuing'),
-        timeout: z.number().optional().default(300).describe('Timeout in seconds when waiting for job completion'),
+      input: z.z.object({
+        jobId: z.z.string().describe('The Rundeck job ID or UUID'),
+        projectName: z.z.string().describe('The Rundeck project name'),
+        parameters: z.z.record(z.z.string()).optional().describe('Job parameters as key-value pairs'),
+        waitForJob: z.z.boolean().optional().default(false).describe('Wait for job completion before continuing'),
+        timeout: z.z.number().optional().default(300).describe('Timeout in seconds when waiting for job completion'),
       }),
     },
     async handler(ctx) {
       const { jobId, projectName, parameters = {}, waitForJob = false, timeout = 300 } = ctx.input;
       
       try {
-        // Get Rundeck configuration from app-config.yaml
         const rundeckUrl = config.getString('rundeck.url');
         const apiToken = config.getString('rundeck.apiToken');
         
@@ -42,19 +35,15 @@ export function createRundeckExecuteAction(options: ActionOptions) {
           throw new Error('Rundeck URL and API token must be configured in app-config.yaml');
         }
 
-        
-        // Build the execution request
-        const executionData: any = {
+        const executionData = {
           project: projectName,
         };
 
-        // Add options if parameters are provided
         if (Object.keys(parameters).length > 0) {
           executionData.options = parameters;
         }
 
-        // Execute the job
-        const response = await fetch(
+        const response = await fetch__default['default'](
           `${rundeckUrl}/api/18/job/${jobId}/executions`,
           {
             method: 'POST',
@@ -72,23 +61,20 @@ export function createRundeckExecuteAction(options: ActionOptions) {
           throw new Error(`Failed to execute Rundeck job: ${response.status} ${response.statusText} - ${errorText}`);
         }
 
-        const result = await response.json() as any;
+        const result = await response.json();
         const executionId = result.id;
-        
         
         ctx.output('executionId', executionId);
         ctx.output('rundeckUrl', `${rundeckUrl}/project/${projectName}/execution/show/${executionId}`);
 
         if (waitForJob) {
-          
           const startTime = Date.now();
           let status = 'running';
           
           while ((status === 'running' || status === 'scheduled' || status === 'queued') && (Date.now() - startTime) < timeout * 1000) {
-            // Wait 5 seconds before checking status
             await new Promise(resolve => setTimeout(resolve, 5000));
             
-            const statusResponse = await fetch(
+            const statusResponse = await fetch__default['default'](
               `${rundeckUrl}/api/18/execution/${executionId}`,
               {
                 headers: {
@@ -99,7 +85,7 @@ export function createRundeckExecuteAction(options: ActionOptions) {
             );
 
             if (statusResponse.ok) {
-              const statusData = await statusResponse.json() as any;
+              const statusData = await statusResponse.json();
               status = statusData.status;
             } else {
               ctx.logger?.warn(`Failed to check job status: ${statusResponse.status}`);
@@ -111,9 +97,8 @@ export function createRundeckExecuteAction(options: ActionOptions) {
           } else {
             ctx.output('status', status);
             
-            // Fetch execution logs
             try {
-              let logResponse = await fetch(
+              let logResponse = await fetch__default['default'](
                 `${rundeckUrl}/api/18/execution/${executionId}/output?format=json`,
                 {
                   headers: {
@@ -126,11 +111,10 @@ export function createRundeckExecuteAction(options: ActionOptions) {
               let logs = '';
               
               if (logResponse.ok) {
-                const logData = await logResponse.json() as any;
+                const logData = await logResponse.json();
                 
-                // Try multiple possible response formats
                 if (logData.entries && Array.isArray(logData.entries)) {
-                  logs = logData.entries.map((entry: any) => entry.log || entry.message || entry.content || entry.text).join('\n');
+                  logs = logData.entries.map((entry) => entry.log || entry.message || entry.content || entry.text).join('\n');
                 } else if (logData.output) {
                   logs = logData.output;
                 } else if (logData.log) {
@@ -141,8 +125,7 @@ export function createRundeckExecuteAction(options: ActionOptions) {
                   logs = JSON.stringify(logData, null, 2);
                 }
               } else {
-                // Fallback to text format
-                logResponse = await fetch(
+                logResponse = await fetch__default['default'](
                   `${rundeckUrl}/api/18/execution/${executionId}/output`,
                   {
                     headers: {
@@ -178,3 +161,23 @@ export function createRundeckExecuteAction(options: ActionOptions) {
     },
   });
 }
+
+const rundeckModule = {
+  pluginId: 'scaffolder',
+  moduleId: 'rundeck',
+  register(env) {
+    env.registerInit({
+      deps: {
+        scaffolder: env.services.pluginProvider({ pluginId: 'scaffolder' }),
+        config: env.services.config,
+        logger: env.services.logger,
+      },
+      async init({ scaffolder, config, logger }) {
+        const action = createRundeckExecuteAction({ config, logger });
+        scaffolder.registerActions(action);
+      },
+    });
+  },
+};
+
+exports.default = rundeckModule;
