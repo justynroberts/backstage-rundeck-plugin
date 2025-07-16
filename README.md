@@ -28,9 +28,11 @@ yarn add @internal/plugin-scaffolder-backend-module-rundeck@git+https://github.c
 
 3. **Add to your backend** (`packages/backend/src/index.ts`):
    ```typescript
-    (At Top)
+    (At Top of code)
    import scaffolderModuleRundeck from '@internal/plugin-scaffolder-backend-module-rundeck';
-   (At Bottom)
+
+   
+   (At Bottom of code)
    backend.add(scaffolderModuleRundeck);
 
    ```
@@ -38,7 +40,7 @@ yarn add @internal/plugin-scaffolder-backend-module-rundeck@git+https://github.c
 3. **Configure Rundeck** (`app-config.yaml`):
    ```yaml
    rundeck:
-     url: https://your-rundeck-instance.com
+     url: ${RUNDECK_API_URL}
      apiToken: ${RUNDECK_API_TOKEN}
    ```
 
