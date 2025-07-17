@@ -27,6 +27,7 @@
   "scripts": {
     "start": "backstage-cli package start",
     "build": "backstage-cli package build",
+    "postinstall": "npm run build || echo 'Build failed, but installation continues'",
     "lint": "backstage-cli package lint",
     "test": "backstage-cli package test",
     "clean": "backstage-cli package clean",
