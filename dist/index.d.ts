@@ -1,1 +1,2 @@
-export { default } from '../src';
+declare const rundeckModule: any;
+export default rundeckModule;

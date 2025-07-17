@@ -3,12 +3,7 @@
 Object.defineProperty(exports, '__esModule', { value: true });
 
 var pluginScaffolderNode = require('@backstage/plugin-scaffolder-node');
-var fetch = require('node-fetch');
-var z = require('zod');
-
-function _interopDefaultLegacy (e) { return e && typeof e === 'object' && 'default' in e ? e : { 'default': e }; }
-
-var fetch__default = /*#__PURE__*/_interopDefaultLegacy(fetch);
+var backendPluginApi = require('@backstage/backend-plugin-api');
 
 function createRundeckExecuteAction(options) {
   const { config } = options;
@@ -16,13 +11,39 @@ function createRundeckExecuteAction(options) {
     id: 'rundeck:job:execute',
     description: 'Executes a Rundeck job with optional parameters and wait for completion',
     schema: {
-      input: z.z.object({
-        jobId: z.z.string().describe('The Rundeck job ID or UUID'),
-        projectName: z.z.string().describe('The Rundeck project name'),
-        parameters: z.z.record(z.z.string()).optional().describe('Job parameters as key-value pairs'),
-        waitForJob: z.z.boolean().optional().default(false).describe('Wait for job completion before continuing'),
-        timeout: z.z.number().optional().default(300).describe('Timeout in seconds when waiting for job completion'),
-      }),
+      input: {
+        type: 'object',
+        required: ['jobId', 'projectName'],
+        properties: {
+          jobId: {
+            type: 'string',
+            title: 'Job ID',
+            description: 'The Rundeck job ID or UUID',
+          },
+          projectName: {
+            type: 'string',
+            title: 'Project Name', 
+            description: 'The Rundeck project name',
+          },
+          parameters: {
+            type: 'object',
+            title: 'Parameters',
+            description: 'Job parameters as key-value pairs',
+          },
+          waitForJob: {
+            type: 'boolean',
+            title: 'Wait for Job',
+            description: 'Wait for job completion before continuing',
+            default: false,
+          },
+          timeout: {
+            type: 'number',
+            title: 'Timeout',
+            description: 'Timeout in seconds when waiting for job completion',
+            default: 300,
+          },
+        },
+      },
     },
     async handler(ctx) {
       const { jobId, projectName, parameters = {}, waitForJob = false, timeout = 300 } = ctx.input;
@@ -43,7 +64,8 @@ function createRundeckExecuteAction(options) {
           executionData.options = parameters;
         }
 
-        const response = await fetch__default['default'](
+        const fetch = require('node-fetch');
+        const response = await fetch(
           `${rundeckUrl}/api/18/job/${jobId}/executions`,
           {
             method: 'POST',
@@ -74,7 +96,7 @@ function createRundeckExecuteAction(options) {
           while ((status === 'running' || status === 'scheduled' || status === 'queued') && (Date.now() - startTime) < timeout * 1000) {
             await new Promise(resolve => setTimeout(resolve, 5000));
             
-            const statusResponse = await fetch__default['default'](
+            const statusResponse = await fetch(
               `${rundeckUrl}/api/18/execution/${executionId}`,
               {
                 headers: {
@@ -97,55 +119,6 @@ function createRundeckExecuteAction(options) {
           } else {
             ctx.output('status', status);
             
-            try {
-              let logResponse = await fetch__default['default'](
-                `${rundeckUrl}/api/18/execution/${executionId}/output?format=json`,
-                {
-                  headers: {
-                    'X-Rundeck-Auth-Token': apiToken,
-                    'Accept': 'application/json',
-                  },
-                }
-              );
-              
-              let logs = '';
-              
-              if (logResponse.ok) {
-                const logData = await logResponse.json();
-                
-                if (logData.entries && Array.isArray(logData.entries)) {
-                  logs = logData.entries.map((entry) => entry.log || entry.message || entry.content || entry.text).join('\n');
-                } else if (logData.output) {
-                  logs = logData.output;
-                } else if (logData.log) {
-                  logs = logData.log;
-                } else if (typeof logData === 'string') {
-                  logs = logData;
-                } else {
-                  logs = JSON.stringify(logData, null, 2);
-                }
-              } else {
-                logResponse = await fetch__default['default'](
-                  `${rundeckUrl}/api/18/execution/${executionId}/output`,
-                  {
-                    headers: {
-                      'X-Rundeck-Auth-Token': apiToken,
-                      'Accept': 'text/plain',
-                    },
-                  }
-                );
-                
-                if (logResponse.ok) {
-                  logs = await logResponse.text();
-                }
-              }
-              
-              ctx.output('logs', logs);
-              
-            } catch (logError) {
-              ctx.output('logs', '');
-            }
-            
             if (status === 'failed') {
               throw new Error(`Rundeck job execution failed with status: ${status}`);
             }
@@ -162,22 +135,22 @@ function createRundeckExecuteAction(options) {
   });
 }
 
-const rundeckModule = {
+const rundeckModule = backendPluginApi.createBackendModule({
   pluginId: 'scaffolder',
   moduleId: 'rundeck',
   register(env) {
     env.registerInit({
       deps: {
-        scaffolder: env.services.pluginProvider({ pluginId: 'scaffolder' }),
+        scaffolder: env.services.scaffolder,
         config: env.services.config,
         logger: env.services.logger,
       },
       async init({ scaffolder, config, logger }) {
         const action = createRundeckExecuteAction({ config, logger });
-        scaffolder.registerActions(action);
+        scaffolder.addActions(action);
       },
     });
   },
-};
+});
 
 exports.default = rundeckModule;
