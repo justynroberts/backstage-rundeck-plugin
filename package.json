@@ -27,7 +27,7 @@
   "scripts": {
     "start": "backstage-cli package start",
     "build": "backstage-cli package build",
-    "postinstall": "npm run build || echo 'Build failed, but installation continues'",
+    "postinstall": "node -e \"const fs = require('fs'); if (!fs.existsSync('./dist')) { console.log('Building plugin...'); require('child_process').execSync('npm run build', {stdio: 'inherit'}); }\"",
     "lint": "backstage-cli package lint",
     "test": "backstage-cli package test",
     "clean": "backstage-cli package clean",
