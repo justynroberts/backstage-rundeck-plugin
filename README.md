@@ -12,53 +12,92 @@ A Backstage scaffolder backend module that provides actions for executing Rundec
 - ✅ Comprehensive logging
 - ✅ Error handling and status reporting
 
+## Prerequisites
+
+- Backstage instance (version 1.19+)
+- Access to a Rundeck instance with API enabled
+- Rundeck API token with appropriate permissions
+- Node.js 18+ and Yarn
+
 ## Installation
 
+### 1. Add the Plugin Dependency
+
+Add the plugin to your backend package dependencies:
+
 ```bash
-yarn add @internal/plugin-scaffolder-backend-module-rundeck@git+https://github.com/justynroberts/backstage-rundeck-plugin.git
+cd packages/backend
+yarn add @internal/plugin-scaffolder-backend-module-rundeck@https://github.com/justynroberts/backstage-rundeck-plugin.git
 ```
 
-## Quick Start
+Or manually edit `packages/backend/package.json`:
 
-1. **Install the plugin**:
-2. 
-   ```bash
-   yarn add @internal/plugin-scaffolder-backend-module-rundeck@git+https://github.com/justynroberts/backstage-rundeck-plugin.git
-   ```
+```json
+{
+  "dependencies": {
+    "@internal/plugin-scaffolder-backend-module-rundeck": "https://github.com/justynroberts/backstage-rundeck-plugin.git"
+  }
+}
+```
 
-3. **Add to your backend** (`packages/backend/src/index.ts`):
-   ```typescript
-    (At Top of code)
-   import scaffolderModuleRundeck from '@internal/plugin-scaffolder-backend-module-rundeck';
+### 2. Register the Plugin Module
 
-   
-   (At Bottom of code)
-   backend.add(scaffolderModuleRundeck);
+Import and register the module in your backend by editing `packages/backend/src/index.ts`:
 
-   ```
+```typescript
+import { createBackend } from '@backstage/backend-defaults';
 
-3. **Configure Rundeck** (`app-config.yaml`):
-   ```yaml
-   rundeck:
-     url: ${RUNDECK_API_URL}
-     apiToken: ${RUNDECK_API_TOKEN}
-   ```
+const backend = createBackend();
 
-4. **Use in templates**:
-   ```yaml
-   steps:
-     - id: deploy
-       name: Deploy with Rundeck
-       action: rundeck:job:execute
-       input:
-         jobId: "your-job-id"
-         projectName: "your-project"
-         parameters:
-           environment: "production"
-           version: "1.0.0"
-   ```
+// ... other backend.add() statements
 
-## Action Reference
+// Add Rundeck scaffolder actions
+backend.add(import('@internal/plugin-scaffolder-backend-module-rundeck'));
+
+backend.start();
+```
+
+### 3. Configure Rundeck Connection
+
+Add Rundeck configuration to your `app-config.yaml`:
+
+```yaml
+rundeck:
+  url: ${RUNDECK_API_URL}
+  apiToken: ${RUNDECK_API_TOKEN}
+```
+
+### 4. Set Environment Variables
+
+Create a `.env` file in your Backstage root directory:
+
+```bash
+# Rundeck Configuration
+RUNDECK_API_URL=https://your-rundeck-instance.com
+RUNDECK_API_TOKEN=your-rundeck-api-token
+```
+
+### 5. Install Dependencies
+
+```bash
+yarn install
+```
+
+### 6. Build and Start
+
+```bash
+yarn start
+```
+
+### 7. Verify Installation
+
+Check the backend logs for:
+
+```
+[scaffolder] Starting scaffolder with the following actions enabled rundeck:job:execute, ...
+```
+
+## Usage
 
 ### `rundeck:job:execute`
 
@@ -115,27 +154,25 @@ steps:
         ${{ steps['deploy-app'].output.logs }}
 ```
 
-## Documentation
+## Troubleshooting
 
-- [📖 Installation Guide](./INSTALL.md) - Detailed installation instructions
-- [🔧 Distribution Guide](./DISTRIBUTION.md) - How to distribute this plugin
-- [📋 API Reference](./README.md) - This document
+### Plugin Not Loading
 
-## Configuration
+1. Check backend logs for import errors
+2. Verify the import statement in backend index.ts
+3. Run `yarn install` to ensure plugin is downloaded
 
-### Required Configuration
+### Configuration Issues
 
-```yaml
-rundeck:
-  url: https://your-rundeck-instance.com
-  apiToken: ${RUNDECK_API_TOKEN}
-```
+1. Verify environment variables are set
+2. Check app-config.yaml syntax
+3. Test Rundeck connectivity manually
 
-### Environment Variables
+## Security
 
-```bash
-export RUNDECK_API_TOKEN=your-rundeck-api-token
-```
+- Never commit API tokens to version control
+- Use environment variables for sensitive configuration
+- Use minimum required permissions for API tokens
 
 ## Development
 
@@ -207,7 +244,6 @@ Apache-2.0
 ## Support
 
 - 📋 [Create an issue](https://github.com/justynroberts/backstage-rundeck-plugin/issues)
-- 📖 [Read the documentation](./INSTALL.md)
 - 💬 [Backstage Discord](https://discord.gg/backstage-687207715902193673)
 
 ## Changelog
