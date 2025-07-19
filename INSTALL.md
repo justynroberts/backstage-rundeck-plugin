@@ -13,12 +13,19 @@ This guide provides step-by-step instructions for installing and configuring the
 
 ### 1. Add the Plugin Dependency
 
-Add the plugin to your backend package dependencies by editing `packages/backend/package.json`:
+Add the plugin to your backend package dependencies:
+
+```bash
+cd packages/backend
+yarn add @internal/plugin-scaffolder-backend-module-rundeck@https://github.com/justynroberts/backstage-rundeck-plugin.git
+```
+
+Or manually edit `packages/backend/package.json`:
 
 ```json
 {
   "dependencies": {
-    "@internal/plugin-scaffolder-backend-module-rundeck": "git+https://github.com/justynroberts/backstage-rundeck-plugin.git"
+    "@internal/plugin-scaffolder-backend-module-rundeck": "https://github.com/justynroberts/backstage-rundeck-plugin.git"
   }
 }
 ```
