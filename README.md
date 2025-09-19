@@ -40,6 +40,8 @@ Or manually edit `packages/backend/package.json`:
 }
 ```
 
+**Note**: If you encounter build issues, ensure you have the latest dependencies:
+
 ### 2. Register the Plugin Module
 
 Import and register the module in your backend by editing `packages/backend/src/index.ts`:
@@ -96,6 +98,8 @@ Check the backend logs for:
 ```
 [scaffolder] Starting scaffolder with the following actions enabled rundeck:job:execute, ...
 ```
+
+If the `rundeck:job:execute` action appears in the list, the plugin has been successfully registered and is ready to use in your software templates.
 
 ## Usage
 
@@ -161,12 +165,28 @@ steps:
 1. Check backend logs for import errors
 2. Verify the import statement in backend index.ts
 3. Run `yarn install` to ensure plugin is downloaded
+4. If you see errors about scaffolderActionsExtensionPoint, ensure you're using a compatible Backstage version (1.19+)
+
+### Build Errors
+
+If you encounter TypeScript compilation errors during installation:
+
+```bash
+# In the plugin directory
+yarn add -D @types/jest @types/node
+yarn tsc
+yarn build
+```
 
 ### Configuration Issues
 
 1. Verify environment variables are set
 2. Check app-config.yaml syntax
 3. Test Rundeck connectivity manually
+
+### API Compatibility
+
+This plugin uses the `@backstage/plugin-scaffolder-node/alpha` API. If you encounter compatibility issues with newer Backstage versions, check that the scaffolder actions extension point import is correct.
 
 ## Security
 
@@ -247,6 +267,13 @@ Apache-2.0
 - 💬 [Backstage Discord](https://discord.gg/backstage-687207715902193673)
 
 ## Changelog
+
+### v1.1.1
+- **FIXED**: Compatibility issues with Backstage 1.19+ API
+- **FIXED**: TypeScript compilation errors in build process
+- **FIXED**: Added missing type dependencies (@types/jest, @types/node)
+- **IMPROVED**: Updated documentation with troubleshooting section
+- **IMPROVED**: Better error handling and build instructions
 
 ### v1.1.0
 - **NEW**: Execution log retrieval when `waitForJob: true`
