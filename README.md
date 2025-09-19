@@ -21,7 +21,22 @@ A Backstage scaffolder backend module that provides actions for executing Rundec
 
 ## Installation
 
-### 1. Add the Plugin Dependency
+### 1. Prepare the Plugin (Required)
+
+**IMPORTANT**: The plugin must be built before installation. Run these commands first:
+
+```bash
+# Clone and build the plugin
+git clone https://github.com/justynroberts/backstage-rundeck-plugin.git
+cd backstage-rundeck-plugin
+
+# Install dependencies and build
+yarn install
+yarn tsc
+yarn build
+```
+
+### 2. Add the Plugin Dependency
 
 Add the plugin to your backend package dependencies:
 
@@ -40,9 +55,9 @@ Or manually edit `packages/backend/package.json`:
 }
 ```
 
-**Note**: If you encounter build issues, ensure you have the latest dependencies:
+**Note**: If you encounter build issues after adding the dependency, try removing yarn.lock and running `yarn install` again to force fresh dependency resolution.
 
-### 2. Register the Plugin Module
+### 3. Register the Plugin Module
 
 Import and register the module in your backend by editing `packages/backend/src/index.ts`:
 
@@ -59,7 +74,7 @@ backend.add(import('@internal/plugin-scaffolder-backend-module-rundeck'));
 backend.start();
 ```
 
-### 3. Configure Rundeck Connection
+### 4. Configure Rundeck Connection
 
 Add Rundeck configuration to your `app-config.yaml`:
 
@@ -69,7 +84,7 @@ rundeck:
   apiToken: ${RUNDECK_API_TOKEN}
 ```
 
-### 4. Set Environment Variables
+### 5. Set Environment Variables
 
 Create a `.env` file in your Backstage root directory:
 
@@ -79,19 +94,19 @@ RUNDECK_API_URL=https://your-rundeck-instance.com
 RUNDECK_API_TOKEN=your-rundeck-api-token
 ```
 
-### 5. Install Dependencies
+### 6. Install Dependencies
 
 ```bash
 yarn install
 ```
 
-### 6. Build and Start
+### 7. Build and Start
 
 ```bash
 yarn start
 ```
 
-### 7. Verify Installation
+### 8. Verify Installation
 
 Check the backend logs for:
 
@@ -162,10 +177,21 @@ steps:
 
 ### Plugin Not Loading
 
-1. Check backend logs for import errors
-2. Verify the import statement in backend index.ts
-3. Run `yarn install` to ensure plugin is downloaded
-4. If you see errors about scaffolderActionsExtensionPoint, ensure you're using a compatible Backstage version (1.19+)
+1. **Ensure plugin is built first**: Follow step 1 to clone and build the plugin before adding to Backstage
+2. Check backend logs for import errors
+3. Verify the import statement in backend index.ts
+4. Run `yarn install` to ensure plugin is downloaded
+5. If you see errors about scaffolderActionsExtensionPoint, ensure you're using a compatible Backstage version (1.19+)
+
+### Dependency Resolution Issues
+
+If you see `Cannot find package '@internal/plugin-scaffolder-backend-module-rundeck'` or workspace resolution errors:
+
+```bash
+# Remove yarn.lock and reinstall to force fresh resolution
+rm yarn.lock
+yarn install
+```
 
 ### Build Errors
 
