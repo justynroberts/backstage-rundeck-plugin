@@ -2,6 +2,43 @@
 
 A Backstage scaffolder backend module that provides actions for executing Rundeck jobs as part of your software templates.
 
+## 🚀 Quick Start (5 minutes)
+
+**Prerequisites**: Backstage instance (version 1.19+), Node.js 18+, yarn
+
+```bash
+# 1. Navigate to your Backstage root directory
+cd your-backstage-app
+
+# 2. Clone plugin into plugins workspace
+git clone https://github.com/justynroberts/backstage-rundeck-plugin.git plugins/rundeck
+
+# 3. Install and build the plugin
+cd plugins/rundeck
+yarn install
+yarn build
+
+# 4. Add to backend dependencies
+cd ../../packages/backend
+# Add this line to package.json dependencies:
+# "@internal/plugin-scaffolder-backend-module-rundeck": "workspace:*"
+
+# 5. Register in backend (add to packages/backend/src/index.ts)
+# backend.add(import('@internal/plugin-scaffolder-backend-module-rundeck'));
+
+# 6. Configure rundeck in app-config.yaml
+# rundeck:
+#   url: ${RUNDECK_API_URL}
+#   apiToken: ${RUNDECK_API_TOKEN}
+
+# 7. Install dependencies and start
+cd ../..
+yarn install
+yarn start
+
+# ✅ Check logs for: "rundeck:job:execute" in scaffolder actions list
+```
+
 ## Features
 
 - ✅ Execute Rundeck jobs with parameters
@@ -21,45 +58,82 @@ A Backstage scaffolder backend module that provides actions for executing Rundec
 
 ## Installation
 
-### 1. Prepare the Plugin (Required)
+### Method 1: Workspace Installation (Recommended - Always Works)
 
-**IMPORTANT**: The plugin must be built before installation. Run these commands first:
+This method installs the plugin as a local workspace package, which is the most reliable approach.
 
 ```bash
-# Clone and build the plugin
-git clone https://github.com/justynroberts/backstage-rundeck-plugin.git
-cd backstage-rundeck-plugin
+# 1. Navigate to your Backstage app root directory
+cd your-backstage-app
 
-# Install dependencies and build
+# 2. Clone the plugin into the plugins workspace directory
+git clone https://github.com/justynroberts/backstage-rundeck-plugin.git plugins/rundeck
+
+# 3. Build the plugin
+cd plugins/rundeck
 yarn install
-yarn tsc
 yarn build
-```
+cd ../..
 
-### 2. Add the Plugin Dependency
-
-Add the plugin to your backend package dependencies:
-
-```bash
-cd packages/backend
-yarn add @internal/plugin-scaffolder-backend-module-rundeck@https://github.com/justynroberts/backstage-rundeck-plugin.git
-```
-
-Or manually edit `packages/backend/package.json`:
-
-```json
+# 4. Add plugin dependency to backend
+# Edit packages/backend/package.json and add to dependencies:
 {
   "dependencies": {
-    "@internal/plugin-scaffolder-backend-module-rundeck": "https://github.com/justynroberts/backstage-rundeck-plugin.git"
+    "@internal/plugin-scaffolder-backend-module-rundeck": "workspace:*"
   }
 }
+
+# 5. Register the plugin module in packages/backend/src/index.ts
+# Add this line after other scaffolder imports:
+backend.add(import('@internal/plugin-scaffolder-backend-module-rundeck'));
+
+# 6. Install dependencies
+yarn install
+
+# 7. Add configuration (see Configuration section below)
+
+# 8. Start Backstage
+yarn start
 ```
 
-**Note**: If you encounter build issues after adding the dependency, try removing yarn.lock and running `yarn install` again to force fresh dependency resolution.
+### Method 2: Direct GitHub Installation (Advanced)
 
-### 3. Register the Plugin Module
+**Note**: This method may fail due to build process complexities. Use Method 1 for guaranteed success.
 
-Import and register the module in your backend by editing `packages/backend/src/index.ts`:
+```bash
+# Add to packages/backend/package.json:
+yarn add "@internal/plugin-scaffolder-backend-module-rundeck@https://github.com/justynroberts/backstage-rundeck-plugin.git"
+```
+
+## Configuration
+
+### 1. Add Rundeck Configuration
+
+Add to your `app-config.yaml`:
+
+```yaml
+rundeck:
+  url: ${RUNDECK_API_URL}
+  apiToken: ${RUNDECK_API_TOKEN}
+```
+
+### 2. Set Environment Variables
+
+Create or update `.env` in your Backstage root:
+
+```bash
+# Rundeck Configuration
+RUNDECK_API_URL=https://your-rundeck-instance.com
+RUNDECK_API_TOKEN=your-rundeck-api-token
+
+# For testing without real Rundeck (will cause connection errors but plugin will load):
+# RUNDECK_API_URL=https://demo.rundeck.com
+# RUNDECK_API_TOKEN=dummy-token-for-testing
+```
+
+### 3. Register Backend Module
+
+Edit `packages/backend/src/index.ts` and add:
 
 ```typescript
 import { createBackend } from '@backstage/backend-defaults';
@@ -74,47 +148,36 @@ backend.add(import('@internal/plugin-scaffolder-backend-module-rundeck'));
 backend.start();
 ```
 
-### 4. Configure Rundeck Connection
+## ✅ Verification
 
-Add Rundeck configuration to your `app-config.yaml`:
+### 1. Check Plugin Loading
+
+Start your Backstage app and check the backend logs for:
+
+```
+Starting scaffolder with the following actions enabled rundeck:job:execute, ...
+```
+
+**✅ SUCCESS**: If you see `rundeck:job:execute` in the actions list, the plugin is working!
+
+**❌ FAILURE**: If you don't see it, check the troubleshooting section below.
+
+### 2. Test in Scaffolder
+
+Create a test template with:
 
 ```yaml
-rundeck:
-  url: ${RUNDECK_API_URL}
-  apiToken: ${RUNDECK_API_TOKEN}
+steps:
+  - id: test-rundeck
+    name: Test Rundeck Action
+    action: rundeck:job:execute
+    input:
+      jobId: "test-job-id"
+      projectName: "test-project"
+      parameters:
+        environment: "development"
+      waitForJob: false
 ```
-
-### 5. Set Environment Variables
-
-Create a `.env` file in your Backstage root directory:
-
-```bash
-# Rundeck Configuration
-RUNDECK_API_URL=https://your-rundeck-instance.com
-RUNDECK_API_TOKEN=your-rundeck-api-token
-```
-
-### 6. Install Dependencies
-
-```bash
-yarn install
-```
-
-### 7. Build and Start
-
-```bash
-yarn start
-```
-
-### 8. Verify Installation
-
-Check the backend logs for:
-
-```
-[scaffolder] Starting scaffolder with the following actions enabled rundeck:job:execute, ...
-```
-
-If the `rundeck:job:execute` action appears in the list, the plugin has been successfully registered and is ready to use in your software templates.
 
 ## Usage
 
@@ -141,84 +204,202 @@ Executes a Rundeck job with optional parameters.
 | `status` | string | Job completion status (when waitForJob: true) |
 | `logs` | string | Complete execution logs (when waitForJob: true) |
 
-#### Example
+#### Complete Example Template
 
 ```yaml
-steps:
-  - id: deploy-app
-    name: Deploy Application
-    action: rundeck:job:execute
-    input:
-      jobId: "a1b2c3d4-e5f6-7890-1234-567890abcdef"
-      projectName: "my-deployment-project"
-      parameters:
-        environment: ${{ parameters.environment }}
-        version: ${{ parameters.version }}
-        component: ${{ parameters.name }}
-        region: "us-east-1"
-      waitForJob: true
-      timeout: 600
+apiVersion: scaffolder.backstage.io/v1beta3
+kind: Template
+metadata:
+  name: rundeck-deployment
+  title: Deploy Application via Rundeck
+  description: Deploy an application using Rundeck automation
+spec:
+  owner: platform-team
+  type: deployment
 
-  - id: show-logs
-    name: Show Execution Logs
-    action: debug:log
-    input:
-      message: |
-        Rundeck Job Execution Complete!
-        Status: ${{ steps['deploy-app'].output.status }}
-        
-        View in Rundeck: ${{ steps['deploy-app'].output.rundeckUrl }}
-        
-        Execution Logs:
-        ${{ steps['deploy-app'].output.logs }}
+  parameters:
+    - title: Deployment Configuration
+      required:
+        - environment
+        - version
+      properties:
+        environment:
+          title: Environment
+          type: string
+          enum: ['development', 'staging', 'production']
+        version:
+          title: Application Version
+          type: string
+          description: Version to deploy (e.g., v1.2.3)
+
+  steps:
+    - id: deploy-app
+      name: Deploy Application
+      action: rundeck:job:execute
+      input:
+        jobId: "a1b2c3d4-e5f6-7890-1234-567890abcdef"
+        projectName: "my-deployment-project"
+        parameters:
+          environment: ${{ parameters.environment }}
+          version: ${{ parameters.version }}
+          component: ${{ parameters.name }}
+          region: "us-east-1"
+        waitForJob: true
+        timeout: 600
+
+    - id: show-results
+      name: Show Deployment Results
+      action: debug:log
+      input:
+        message: |
+          🚀 Deployment Complete!
+
+          Status: ${{ steps['deploy-app'].output.status }}
+          Rundeck URL: ${{ steps['deploy-app'].output.rundeckUrl }}
+          Execution ID: ${{ steps['deploy-app'].output.executionId }}
+
+          📋 Deployment Logs:
+          ${{ steps['deploy-app'].output.logs }}
+
+  output:
+    links:
+      - title: Rundeck Execution
+        url: ${{ steps['deploy-app'].output.rundeckUrl }}
+      - title: Repository
+        url: ${{ steps['publish'].output.remoteUrl }}
 ```
 
 ## Troubleshooting
 
 ### Plugin Not Loading
 
-1. **Ensure plugin is built first**: Follow step 1 to clone and build the plugin before adding to Backstage
-2. Check backend logs for import errors
-3. Verify the import statement in backend index.ts
-4. Run `yarn install` to ensure plugin is downloaded
-5. If you see errors about scaffolderActionsExtensionPoint, ensure you're using a compatible Backstage version (1.19+)
+**Symptom**: `rundeck:job:execute` not in scaffolder actions list
 
-### Dependency Resolution Issues
+**Solutions**:
 
-If you see `Cannot find package '@internal/plugin-scaffolder-backend-module-rundeck'` or workspace resolution errors:
+1. **Verify workspace setup**:
+   ```bash
+   # Check that plugin is in plugins directory
+   ls plugins/rundeck/package.json
 
-```bash
-# Remove yarn.lock and reinstall to force fresh resolution
-rm yarn.lock
-yarn install
-```
+   # Verify workspace dependency
+   grep "workspace:" packages/backend/package.json
+   ```
+
+2. **Check import statement**:
+   ```bash
+   # Verify backend registration
+   grep "rundeck" packages/backend/src/index.ts
+   ```
+
+3. **Rebuild everything**:
+   ```bash
+   # Clean and rebuild
+   yarn clean
+   rm -rf node_modules yarn.lock
+   yarn install
+   cd plugins/rundeck && yarn build && cd ../..
+   yarn install
+   yarn start
+   ```
 
 ### Build Errors
 
-If you encounter TypeScript compilation errors during installation:
+**Symptom**: TypeScript compilation errors or missing declaration files
+
+**Solutions**:
+
+1. **Install missing types**:
+   ```bash
+   cd plugins/rundeck
+   yarn add -D @types/jest @types/node
+   yarn build
+   ```
+
+2. **Check Backstage version compatibility**:
+   ```bash
+   # Ensure Backstage 1.19+
+   grep "@backstage" packages/backend/package.json
+   ```
+
+### Dependency Resolution Issues
+
+**Symptom**: `Cannot find package` or workspace resolution errors
+
+**Solutions**:
+
+1. **Force fresh resolution**:
+   ```bash
+   rm yarn.lock
+   yarn install
+   ```
+
+2. **Check yarn workspaces**:
+   ```bash
+   # Verify workspaces configuration in root package.json
+   yarn workspaces list
+   ```
+
+### Runtime Configuration Issues
+
+**Symptom**: Plugin loads but fails to execute jobs
+
+**Solutions**:
+
+1. **Verify environment variables**:
+   ```bash
+   # Check .env file exists and has correct values
+   cat .env | grep RUNDECK
+   ```
+
+2. **Test Rundeck connectivity**:
+   ```bash
+   # Test API connection manually
+   curl -H "X-Rundeck-Auth-Token: $RUNDECK_API_TOKEN" "$RUNDECK_API_URL/api/40/system/info"
+   ```
+
+3. **Check app-config.yaml syntax**:
+   ```yaml
+   rundeck:
+     url: ${RUNDECK_API_URL}    # Note: must use ${} syntax
+     apiToken: ${RUNDECK_API_TOKEN}
+   ```
+
+### Complete Reset Instructions
+
+If all else fails, start fresh:
 
 ```bash
-# In the plugin directory
-yarn add -D @types/jest @types/node
-yarn tsc
-yarn build
+# 1. Stop Backstage
+# Ctrl+C or kill processes
+
+# 2. Clean everything
+yarn clean
+rm -rf node_modules yarn.lock plugins/rundeck
+
+# 3. Re-clone and setup
+git clone https://github.com/justynroberts/backstage-rundeck-plugin.git plugins/rundeck
+cd plugins/rundeck && yarn install && yarn build && cd ../..
+
+# 4. Add dependency to packages/backend/package.json:
+# "@internal/plugin-scaffolder-backend-module-rundeck": "workspace:*"
+
+# 5. Add import to packages/backend/src/index.ts:
+# backend.add(import('@internal/plugin-scaffolder-backend-module-rundeck'));
+
+# 6. Reinstall and start
+yarn install
+yarn start
+
+# 7. Verify success: look for "rundeck:job:execute" in logs
 ```
-
-### Configuration Issues
-
-1. Verify environment variables are set
-2. Check app-config.yaml syntax
-3. Test Rundeck connectivity manually
-
-### API Compatibility
-
-This plugin uses the `@backstage/plugin-scaffolder-node/alpha` API. If you encounter compatibility issues with newer Backstage versions, check that the scaffolder actions extension point import is correct.
 
 ## Security
 
 - Never commit API tokens to version control
 - Use environment variables for sensitive configuration
 - Use minimum required permissions for API tokens
+- Consider using Backstage's secret management features
 
 ## Development
 
@@ -248,23 +429,12 @@ yarn test
 yarn lint
 ```
 
-### Building
+### Testing Your Changes
 
-```bash
-yarn build
-```
-
-### Testing
-
-```bash
-yarn test
-```
-
-### Linting
-
-```bash
-yarn lint
-```
+1. Make changes to the plugin
+2. Run `yarn build` in the plugin directory
+3. Restart your Backstage instance
+4. Test with a scaffolder template
 
 ## Compatibility
 
